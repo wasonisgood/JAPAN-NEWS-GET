@@ -11,6 +11,17 @@ const headers = {
   "accept-language": "ja,en;q=0.9",
   "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36"
 };
+function cleanText(text) {
+  return text
+    ?.replace(/[\u{1F600}-\u{1F64F}]/gu, "") // emoji
+    ?.replace(/[\u{1F300}-\u{1F5FF}]/gu, "") // symbols
+    ?.replace(/[\u{1F680}-\u{1F6FF}]/gu, "") // transport
+    ?.replace(/<[^>]*>/g, "")                // HTML tags
+    ?.replace(/&[^;]+;/g, "")                // HTML entities
+    ?.replace(/[\r\n\t]/g, " ")              // control chars
+    ?.trim();
+}
+
 
 exports.handler = async function (event) {
   const JST = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -128,12 +139,12 @@ exports.handler = async function (event) {
     });
 
     allItems.forEach(item => {
-      feed.item({
-        title: item.title,
-        description: item.description,
-        url: item.url,
-        date: item.date,
-      });
+ feed.item({
+  title: cleanText(item.title),
+  description: cleanText(item.description),
+  url: item.url,
+  date: item.date,
+});
     });
 
     const xml = feed.xml({ indent: true });
