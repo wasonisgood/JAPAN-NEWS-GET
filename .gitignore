@@ -1,0 +1,30 @@
+# Local Netlify folder
+.netlify
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# dotenv config
+.env
+.env.local
+
+# macOS
+.DS_Store
+
+# Netlify
+.netlify/
+dist/
+
+# Supabase
+supabase/.temp/
+supabase/.output/
+supabase/migrations/.config/
+
+# VS Code
+.vscode/
+
+# Build
+*.log
+*.sqlite
+.cache/

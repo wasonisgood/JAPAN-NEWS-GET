@@ -1,0 +1,18 @@
+{
+  "name": "japan-news-get",
+  "version": "1.0.0",
+  "description": "-- 建立資料表\r create table if not exists rss_cache (\r   date text primary key,\r   content text not null,\r   updated_at timestamp with time zone default now()\r );",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.2",
+    "axios": "^1.10.0",
+    "cheerio": "^1.1.0",
+    "rss": "^1.2.2"
+  }
+}

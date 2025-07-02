@@ -1,0 +1,8 @@
+[build]
+functions = "functions"
+command = "npm install"
+
+[[redirects]]
+from = "/rss"
+to = "/.netlify/functions/rss"
+status = 200
