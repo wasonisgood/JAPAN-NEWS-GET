@@ -116,18 +116,18 @@ exports.handler = async function (event) {
         res = await axios.get(url, { headers });
         console.log(`✅ 回應成功（狀態碼 ${res.status}）`);
       } catch (axiosErr) {
-  const status = axiosErr.response?.status;
-  if (status === 404) {
-    console.log(`✅ 第 ${page} 頁回傳 404，抓取結束`);
-    break; // ⛔ 不要 return 500，這是正常結束
-  } else {
-    console.error(`❌ axios.get 錯誤（HTTP ${status || 'unknown'}）`);
-    return {
-      statusCode: 500,
-      body: `Yahoo 抓取失敗: ${axiosErr.message}`,
-    };
-  }
-}
+        const status = axiosErr.response?.status;
+        if (status === 404) {
+          console.log(`✅ 第 ${page} 頁回傳 404，抓取結束`);
+          break; // ⛔ 不要 return 500，這是正常結束
+        } else {
+          console.error(`❌ axios.get 錯誤（HTTP ${status || 'unknown'}）`);
+          return {
+            statusCode: 500,
+            body: `Yahoo 抓取失敗: ${axiosErr.message}`,
+          };
+        }
+      }
 
 
       const $ = cheerio.load(res.data);
@@ -195,6 +195,8 @@ exports.handler = async function (event) {
     let descriptions = allItems.map(item => cleanText(item.description));
     // 修正：應該用 googleLang 判斷快取與翻譯
     let translated = false;
+    console.log("🔤 翻譯語言：", targetLang);
+    console.log("🔤 翻譯內容數量：", texts.length);
     if (googleLang !== "ja") {
       const newTitles = await batchTranslateText(titles, googleLang);
       const newDescriptions = await batchTranslateText(descriptions, googleLang);
