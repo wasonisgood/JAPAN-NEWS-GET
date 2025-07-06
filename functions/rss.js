@@ -22,28 +22,28 @@ function cleanText(text) {
     ?.trim();
 }
 
-// 新增 Google Translate API 函式
-async function translateText(text, targetLang) {
-  if (!targetLang || targetLang === "ja") return text;
+// 批次翻譯函式
+async function batchTranslateText(texts, targetLang) {
+  if (!targetLang || targetLang === "ja") return texts;
   try {
     const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-    if (!apiKey) return text;
+    if (!apiKey) return texts;
     const res = await axios.post(
       `https://translation.googleapis.com/language/translate/v2`,
       {},
       {
         params: {
-          q: text,
+          q: texts,
           target: targetLang,
           format: "text",
           key: apiKey,
         },
       }
     );
-    return res.data.data.translations[0].translatedText || text;
+    return res.data.data.translations.map(t => t.translatedText);
   } catch (e) {
-    console.warn("⚠️ 翻譯失敗：", e.message);
-    return text;
+    console.warn("⚠️ 批次翻譯失敗：", e.message);
+    return texts;
   }
 }
 
@@ -175,21 +175,21 @@ exports.handler = async function (event) {
       pubDate: new Date(),
     });
 
-    // 依語言翻譯標題與描述
-    for (const item of allItems) {
-      let title = cleanText(item.title);
-      let description = cleanText(item.description);
-      if (lang !== "ja") {
-        title = await translateText(title, lang);
-        description = await translateText(description, lang);
-      }
+    // 依語言翻譯標題與描述（批次）
+    let titles = allItems.map(item => cleanText(item.title));
+    let descriptions = allItems.map(item => cleanText(item.description));
+    if (lang !== "ja") {
+      titles = await batchTranslateText(titles, lang);
+      descriptions = await batchTranslateText(descriptions, lang);
+    }
+    allItems.forEach((item, idx) => {
       feed.item({
-        title,
-        description,
+        title: titles[idx],
+        description: descriptions[idx],
         url: item.url,
         date: item.date,
       });
-    }
+    });
 
     const xml = feed.xml({ indent: true });
 
