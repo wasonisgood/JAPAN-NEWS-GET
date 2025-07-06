@@ -41,9 +41,20 @@ async function batchTranslateText(texts, targetLang) {
         },
       }
     );
+    // 新增：印出 Google 回傳內容方便 debug
+    console.log("🟢 Google Translate 回傳：", JSON.stringify(res.data, null, 2));
+    if (!res.data || !res.data.data || !res.data.data.translations) {
+      console.warn("⚠️ Google Translate 回傳格式異常");
+      return texts;
+    }
     return res.data.data.translations.map(t => t.translatedText);
   } catch (e) {
-    console.warn("⚠️ 批次翻譯失敗：", e.message);
+    // 印出錯誤回應內容
+    if (e.response) {
+      console.error("❌ Google Translate API 錯誤：", e.response.status, e.response.data);
+    } else {
+      console.warn("⚠️ 批次翻譯失敗：", e.message);
+    }
     return texts;
   }
 }
