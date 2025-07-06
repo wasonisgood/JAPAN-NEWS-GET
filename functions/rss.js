@@ -30,14 +30,15 @@ async function batchTranslateText(texts, targetLang) {
     const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
     if (!apiKey) return texts;
     // 修正：Google Translate API 需要 POST 一個有內容的 body（即使是空字串也要）
-    const res = await axios.post(
-      `https://translation.googleapis.com/language/translate/v2`,
-      { q: texts, target: targetLang, format: "text" }, // 將參數放到 body
-      {
-        params: { key: apiKey },
-        headers: { "Content-Type": "application/json" }
-      }
-    );
+await axios.get(`https://translation.googleapis.com/language/translate/v2`, {
+  params: {
+    q: texts,
+    target: targetLang,
+    format: "text",
+    key: apiKey,
+  },
+});
+
     // 新增：印出 Google 回傳內容方便 debug
     console.log("🟢 Google Translate 回傳：", JSON.stringify(res.data, null, 2));
     if (!res.data || !res.data.data || !res.data.data.translations) {
