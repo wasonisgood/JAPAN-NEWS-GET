@@ -195,8 +195,7 @@ exports.handler = async function (event) {
     let titles = allItems.map(item => cleanText(item.title));
     let descriptions = allItems.map(item => cleanText(item.description));
     let translated = false;
-    console.log("🔤 翻譯語言：", googleLang);
-    console.log("🔤 翻譯內容數量：", titles.length);
+
     if (googleLang !== "ja") {
       const newTitles = await batchTranslateText(titles, googleLang);
       const newDescriptions = await batchTranslateText(descriptions, googleLang);
