@@ -11,6 +11,7 @@ const headers = {
   "accept-language": "ja,en;q=0.9",
   "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36"
 };
+
 function cleanText(text) {
   return text
     ?.replace(/[\u{1F600}-\u{1F64F}]/gu, "") // emoji
@@ -193,10 +194,9 @@ exports.handler = async function (event) {
     // 依語言翻譯標題與描述（批次）
     let titles = allItems.map(item => cleanText(item.title));
     let descriptions = allItems.map(item => cleanText(item.description));
-    // 修正：應該用 googleLang 判斷快取與翻譯
     let translated = false;
-    console.log("🔤 翻譯語言：", targetLang);
-    console.log("🔤 翻譯內容數量：", texts.length);
+    console.log("🔤 翻譯語言：", googleLang);
+    console.log("🔤 翻譯內容數量：", titles.length);
     if (googleLang !== "ja") {
       const newTitles = await batchTranslateText(titles, googleLang);
       const newDescriptions = await batchTranslateText(descriptions, googleLang);
