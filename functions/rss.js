@@ -22,24 +22,61 @@ function cleanText(text) {
     ?.trim();
 }
 
+// 新增 Google Translate API 函式
+async function translateText(text, targetLang) {
+  if (!targetLang || targetLang === "ja") return text;
+  try {
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey) return text;
+    const res = await axios.post(
+      `https://translation.googleapis.com/language/translate/v2`,
+      {},
+      {
+        params: {
+          q: text,
+          target: targetLang,
+          format: "text",
+          key: apiKey,
+        },
+      }
+    );
+    return res.data.data.translations[0].translatedText || text;
+  } catch (e) {
+    console.warn("⚠️ 翻譯失敗：", e.message);
+    return text;
+  }
+}
 
 exports.handler = async function (event) {
   const JST = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const query = event.queryStringParameters || {};
   const date = query.date || JST.toISOString().slice(0, 10).replace(/-/g, '');
+  const lang = query.lang || "ja"; // 新增語言參數
   const baseUrl = `https://news.yahoo.co.jp/topics/top-picks?date=${date}`;
   const allItems = [];
 
   console.log("🕐 處理日期：", date);
 
-  // 1️⃣ 查 Supabase 快取
+  // 1️⃣ 查 Supabase 快取（先查有 lang 欄位的資料）
+  let cached = null;
   try {
-    const { data: cached } = await supabase
+    const { data } = await supabase
       .from("rss_cache")
-      .select("content")
+      .select("content,lang")
       .eq("date", date)
+      .eq("lang", lang)
       .maybeSingle();
-
+    cached = data;
+    // 兼容舊資料：如果 lang=ja 且沒查到，查找沒有 lang 欄位的快取
+    if (!cached && lang === "ja") {
+      const { data: oldData } = await supabase
+        .from("rss_cache")
+        .select("content")
+        .eq("date", date)
+        .is("lang", null)
+        .maybeSingle();
+      cached = oldData;
+    }
     if (cached?.content) {
       console.log("📦 使用 Supabase 快取");
       return {
@@ -132,27 +169,35 @@ exports.handler = async function (event) {
     const feed = new RSS({
       title: `Yahoo Japan トップニュース (${date})`,
       description: "Yahoo Japan 今日の話題",
-      feed_url: `http://localhost:8888/rss?date=${date}`,
+      feed_url: `http://localhost:8888/rss?date=${date}&lang=${lang}`,
       site_url: "https://news.yahoo.co.jp/topics/top-picks",
-      language: "ja",
+      language: lang,
       pubDate: new Date(),
     });
 
-    allItems.forEach(item => {
- feed.item({
-  title: cleanText(item.title),
-  description: cleanText(item.description),
-  url: item.url,
-  date: item.date,
-});
-    });
+    // 依語言翻譯標題與描述
+    for (const item of allItems) {
+      let title = cleanText(item.title);
+      let description = cleanText(item.description);
+      if (lang !== "ja") {
+        title = await translateText(title, lang);
+        description = await translateText(description, lang);
+      }
+      feed.item({
+        title,
+        description,
+        url: item.url,
+        date: item.date,
+      });
+    }
 
     const xml = feed.xml({ indent: true });
 
-    // 3️⃣ 儲存到 Supabase 快取
+    // 3️⃣ 儲存到 Supabase 快取（帶入 lang 欄位）
     try {
       await supabase.from("rss_cache").upsert({
         date,
+        lang,
         content: xml,
         updated_at: new Date().toISOString(),
       });

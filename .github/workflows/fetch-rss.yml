@@ -9,7 +9,9 @@ jobs:
   trigger-netlify:
     runs-on: ubuntu-latest
     steps:
-      - name: Curl RSS route to prewarm
+      - name: Curl RSS route to prewarm (ja)
         run: |
           TODAY=$(date '+%Y%m%d')
-          curl --fail https://your-site.netlify.app/rss?date=$TODAY
+          curl --fail "https://japan-news-get.netlify.app/rss?date=$TODAY&lang=ja"
+          curl --fail "https://japan-news-get.netlify.app/rss?date=$TODAY&lang=en"
+          curl --fail "https://japan-news-get.netlify.app/rss?date=$TODAY&lang=zh-TW"
