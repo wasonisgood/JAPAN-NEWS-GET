@@ -29,30 +29,39 @@ async function batchTranslateText(texts, targetLang) {
   try {
     const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
     if (!apiKey) return texts;
-    // 修正：Google Translate API 需要 POST 一個有內容的 body（即使是空字串也要）
-const res = await axios.get(`https://translation.googleapis.com/language/translate/v2`, {
-  params: {
-    q: texts,
-    target: targetLang,
-    format: "text",
-    key: apiKey,
-  },
-});
 
-    // 新增：印出 Google 回傳內容方便 debug
-    console.log("🟢 Google Translate 回傳：", JSON.stringify(res.data, null, 2));
-    if (!res.data || !res.data.data || !res.data.data.translations) {
-      console.warn("⚠️ Google Translate 回傳格式異常");
+    // 🔧 過濾掉無效內容
+    const filteredTexts = texts.filter(t => typeof t === "string" && t.trim() !== "");
+    if (filteredTexts.length === 0) return texts; // 沒東西可翻譯就直接跳出
+
+    const res = await axios.post(
+      `https://translation.googleapis.com/language/translate/v2`,
+      {
+        q: filteredTexts,
+        target: targetLang,
+        format: "text"
+      },
+      {
+        params: {
+          key: apiKey
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+
+    // 🌐 把翻譯結果對應回原陣列長度（若長度一致就回傳翻譯）
+    if (filteredTexts.length === texts.length) {
+      return res.data.data.translations.map(t => t.translatedText);
+    } else {
+      // 否則回傳原始 texts，不嘗試配對，避免錯位
+      console.warn("⚠️ 翻譯項目數與原始數量不同，跳過翻譯結果");
       return texts;
     }
-    return res.data.data.translations.map(t => t.translatedText);
+
   } catch (e) {
-    // 印出錯誤回應內容
-    if (e.response) {
-      console.error("❌ Google Translate API 錯誤：", e.response.status, e.response.data);
-    } else {
-      console.warn("⚠️ 批次翻譯失敗：", e.message);
-    }
+    console.warn("⚠️ 批次翻譯失敗：", e.response?.data || e.message);
     return texts;
   }
 }
