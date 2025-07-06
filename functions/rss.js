@@ -47,11 +47,26 @@ async function batchTranslateText(texts, targetLang) {
   }
 }
 
+// 語言代碼正規化
+function normalizeLang(lang) {
+  if (!lang) return "ja";
+  const map = {
+    "zh-tw": "zh-TW",
+    "zh-cn": "zh-CN",
+    "en": "en",
+    "ja": "ja",
+    // 你可依需求擴充
+  };
+  return map[lang.toLowerCase()] || lang;
+}
+
 exports.handler = async function (event) {
   const JST = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const query = event.queryStringParameters || {};
   const date = query.date || JST.toISOString().slice(0, 10).replace(/-/g, '');
-  const lang = query.lang || "ja"; // 新增語言參數
+  const lang = query.lang || "ja";
+  const googleLang = normalizeLang(lang);
+
   const baseUrl = `https://news.yahoo.co.jp/topics/top-picks?date=${date}`;
   const allItems = [];
 
@@ -178,9 +193,10 @@ exports.handler = async function (event) {
     // 依語言翻譯標題與描述（批次）
     let titles = allItems.map(item => cleanText(item.title));
     let descriptions = allItems.map(item => cleanText(item.description));
-    if (lang !== "ja") {
-      titles = await batchTranslateText(titles, lang);
-      descriptions = await batchTranslateText(descriptions, lang);
+    // 修正：應該用 googleLang 判斷快取與翻譯
+    if (googleLang !== "ja") {
+      titles = await batchTranslateText(titles, googleLang);
+      descriptions = await batchTranslateText(descriptions, googleLang);
     }
     allItems.forEach((item, idx) => {
       feed.item({
@@ -193,11 +209,11 @@ exports.handler = async function (event) {
 
     const xml = feed.xml({ indent: true });
 
-    // 3️⃣ 儲存到 Supabase 快取（帶入 lang 欄位）
+    // 3️⃣ 儲存到 Supabase 快取（帶入 lang 欄位，應存 googleLang）
     try {
       await supabase.from("rss_cache").upsert({
         date,
-        lang,
+        lang: googleLang,
         content: xml,
         updated_at: new Date().toISOString(),
       });
