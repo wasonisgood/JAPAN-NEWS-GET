@@ -79,11 +79,11 @@ exports.handler = async function (event) {
       .from("rss_cache")
       .select("content,lang")
       .eq("date", date)
-      .eq("lang", lang)
+      .eq("lang", googleLang) // 修正：查詢時用 googleLang
       .maybeSingle();
     cached = data;
-    // 兼容舊資料：如果 lang=ja 且沒查到，查找沒有 lang 欄位的快取
-    if (!cached && lang === "ja") {
+    // 兼容舊資料：如果 googleLang=ja 且沒查到，查找沒有 lang 欄位的快取
+    if (!cached && googleLang === "ja") {
       const { data: oldData } = await supabase
         .from("rss_cache")
         .select("content")
@@ -194,9 +194,16 @@ exports.handler = async function (event) {
     let titles = allItems.map(item => cleanText(item.title));
     let descriptions = allItems.map(item => cleanText(item.description));
     // 修正：應該用 googleLang 判斷快取與翻譯
+    let translated = false;
     if (googleLang !== "ja") {
-      titles = await batchTranslateText(titles, googleLang);
-      descriptions = await batchTranslateText(descriptions, googleLang);
+      const newTitles = await batchTranslateText(titles, googleLang);
+      const newDescriptions = await batchTranslateText(descriptions, googleLang);
+      // 檢查是否真的有翻譯
+      if (JSON.stringify(newTitles) !== JSON.stringify(titles) || JSON.stringify(newDescriptions) !== JSON.stringify(descriptions)) {
+        titles = newTitles;
+        descriptions = newDescriptions;
+        translated = true;
+      }
     }
     allItems.forEach((item, idx) => {
       feed.item({
@@ -209,15 +216,19 @@ exports.handler = async function (event) {
 
     const xml = feed.xml({ indent: true });
 
-    // 3️⃣ 儲存到 Supabase 快取（帶入 lang 欄位，應存 googleLang）
+    // 3️⃣ 儲存到 Supabase 快取（僅翻譯有變化時才寫入）
     try {
-      await supabase.from("rss_cache").upsert({
-        date,
-        lang: googleLang,
-        content: xml,
-        updated_at: new Date().toISOString(),
-      });
-      console.log("✅ 成功寫入 Supabase 快取");
+      if (googleLang === "ja" || translated) {
+        await supabase.from("rss_cache").upsert({
+          date,
+          lang: googleLang,
+          content: xml,
+          updated_at: new Date().toISOString(),
+        });
+        console.log("✅ 成功寫入 Supabase 快取");
+      } else {
+        console.warn("⚠️ 翻譯內容與原文相同，不寫入快取");
+      }
     } catch (saveErr) {
       console.warn("⚠️ 快取儲存失敗：", saveErr.message);
     }
